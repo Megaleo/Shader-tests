@@ -92,7 +92,7 @@ main = do
     vertexPosition_modelspaceID <-
       withCString "vertexPosition_modelspace" $
       (fromIntegral <$>) . glGetAttribLocation programID
-    if (vertexPosition_modelspaceID < 0)
+    if (vertexPosition_modelspaceID /= 0)
       then putStrLn "vertexPosition_modelspaceID could not be found!"
       else putStrLn "vertexPosition_modelspaceID loaded!"
 
