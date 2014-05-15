@@ -86,7 +86,8 @@ main = do
     glGenVertexArrays 1 vertexArrayIDPtr
     _ <- glBindVertexArray <$> peek vertexArrayIDPtr
 
-    programID <- loadProgram "SimpleVertexShader.vertexshader" "SimpleFragmentShader.fragmentshader"
+    programID <- loadProgram "SimpleVertexShader.vertexshader"
+                             "SimpleFragmentShader.fragmentshader"
 
     vertexPosition_modelspaceID <-
       withCString "vertexPosition_modelspace" $
@@ -95,7 +96,7 @@ main = do
       then putStrLn "vertexPosition_modelspaceID could not be found!"
       else putStrLn "vertexPosition_modelspaceID loaded!"
 
-    let g_vertex_buffer_data = [-1, -1, 0,
+    let g_vertex_buffer_data = [-1, -1, 0, -- Triangle's vertex
                                  1, -1, 0,
                                  0,  1, 0] :: [GLfloat]
 
@@ -111,31 +112,28 @@ main = do
     --Drawing
     GLFW.swapInterval 1
     ( do
-        t0 <- fromJust <$> GLFW.getTime
-        --putStrLn "== loop begin =="
-        glClear gl_COLOR_BUFFER_BIT
+        t0 <- fromJust <$> GLFW.getTime -- Get initial time
+        glClear gl_COLOR_BUFFER_BIT -- Clear color buffer
         glUseProgram programID
         glEnableVertexAttribArray vertexPosition_modelspaceID
         glBindBuffer gl_ARRAY_BUFFER vertexBufferName
         glVertexAttribPointer vertexPosition_modelspaceID 3 gl_FLOAT (fromBool False) 0 nullPtr
-        --putStrLn "Okj"
-        glDrawArrays gl_TRIANGLES 0 3
-        --putStrLn "lk"
+        glDrawArrays gl_TRIANGLES 0 3 -- The drawing!
         glDisableVertexAttribArray vertexPosition_modelspaceID
         GLFW.swapBuffers window
         GLFW.pollEvents
-        t1 <- fromJust <$> GLFW.getTime
-        let deltaT = realToFrac $ t1 - t0 :: Double
+        t1 <- fromJust <$> GLFW.getTime -- Final time
+        let deltaT = realToFrac $ t1 - t0 :: Double -- Calculate the time difference
         threadDelay $ if deltaT > 1 / 60
             then 0
-            else round $ 1000000 * ((1 / 60) - deltaT)
-        t2 <- fromJust <$> GLFW.getTime
-        putStrLn $ show ((1 :: Double) / realToFrac (t1 - t0))
+            else round $ 1000000 * ((1 / 60) - deltaT) -- Delays the required amount to stay at 60 FPS
+        t2 <- fromJust <$> GLFW.getTime -- Time after the delay
+        putStrLn $ show ((1 :: Double) / realToFrac (t1 - t0)) -- FPS of the loop
                 ++ " -> "
-                ++ show ((1 :: Double) / realToFrac (t2 - t0))
-        --putStrLn "== loop end =="
+                ++ show ((1 :: Double) / realToFrac (t2 - t0)) -- FPS with the delay
      ) `untilM_` ((||) <$> ((==) GLFW.KeyState'Pressed <$> GLFW.getKey window GLFW.Key'Escape)
-                       <*> GLFW.windowShouldClose window)
+                       <*> GLFW.windowShouldClose window) -- Chech for ESC or window close
+    -- Finalizating
     GLFW.terminate
     alloca $ \ptr -> do
       glDeleteBuffers 1 ptr
