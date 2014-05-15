@@ -134,8 +134,8 @@ main = do
      ) `untilM_` ((||) <$> ((==) GLFW.KeyState'Pressed <$> GLFW.getKey window GLFW.Key'Escape)
                        <*> GLFW.windowShouldClose window) -- Chech for ESC or window close
     -- Finalizating
-    GLFW.terminate
     alloca $ \ptr -> do
       glDeleteBuffers 1 ptr
     glDeleteVertexArrays 1 vertexArrayIDPtr
     glDeleteProgram programID
+    shutdown window
