@@ -80,7 +80,7 @@ glfwInit = do
 main :: IO ()
 main = do
     window <- initAll
-    glClearColor 1.0 0.0 1.0 1.0 -- Clear color to black
+    glClearColor 0.0 0.0 0.4 1.0 -- Clear color to dark blue
     -- Shader stuff
     alloca $ \vertexArrayIDPtr -> do
     glGenVertexArrays 1 vertexArrayIDPtr
