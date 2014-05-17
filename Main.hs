@@ -13,6 +13,7 @@ import Control.Applicative
 import Control.Monad.Loops
 import Control.Monad
 import Control.Concurrent
+import Data.Vec hiding (head)
 
 import Shader
 
@@ -77,6 +78,83 @@ glfwInit = do
         GLFW.makeContextCurrent (Just window) -- Tell GLFW to use this window
         return window
 
+-- Checks to see if the shader's variable from the
+-- shader was actually localizated. (Prints out to the screen
+-- and returns again the varID)
+checkVar :: String -> GLint -> IO GLint
+checkVar varName varID = do
+  if varID /= 0
+    then putStrLn $ varName ++ " could not be localizated!"
+    else putStrLn $ varName ++ " localizated!"
+  return varID
+
+localizateAttrib :: String -> GLuint -> IO GLint
+localizateAttrib attrib programID =
+  withCString attrib $ glGetAttribLocation programID
+
+-- List of all variables attributes
+attribList :: [String]
+attribList = [ "vertexPosition_modelspace" ]
+
+localizateAllAttrib :: GLuint -> IO [GLuint]
+localizateAllAttrib programID = do
+  mapM (\var -> localizateAttrib var programID
+            >>= checkVar var
+            >>= return . fromIntegral) attribList
+
+localizateUniform :: String -> GLuint -> IO GLint
+localizateUniform uniform programID =
+  withCString uniform $ glGetUniformLocation programID
+
+-- List of all unifrom attributes
+uniformList :: [String]
+uniformList = [ "MVP" ]
+
+localizateAllUniform :: GLuint -> IO [GLint]
+localizateAllUniform programID = do
+  mapM (\var -> localizateUniform var programID
+            >>= checkVar var) uniformList
+
+localizateVarying :: String -> GLuint -> IO GLint
+localizateVarying varying programID =
+  withCString varying $ glGetVaryingLocation programID
+
+-- List of all unifrom attributes
+varyingList :: [String]
+varyingList = [ "color" ]
+
+localizateAllVarying :: GLuint -> IO [GLint]
+localizateAllVarying programID = do
+  mapM (\var -> localizateVarying var programID
+            >>= checkVar var) varyingList
+
+-- Helper function for 3D vectors
+vec3 x y z = x :. y :. z :. ()
+
+-- Model - View - Projection matrix
+mvpMatrix :: Mat44 GLfloat
+mvpMatrix = projection `multmm` view `multmm` model
+  where projection = perspective 0.1 100 (pi/4) (4/3)
+        view       = lookAt (vec3 0 1 0) (vec3 4 3 3) (vec3 0 0 0)
+        model      = identity
+
+-- Data.Vec rotationLookAt does not work exactly like I want,
+-- temporary recoding
+lookAt :: Floating a => Vec3 a -> Vec3 a -> Vec3 a -> Mat44 a
+lookAt up eye target = orientation `multmm` translation
+  where
+    zAxis = normalize (eye - target)
+    xAxis = normalize $ up `cross` zAxis
+    yAxis = zAxis `cross` xAxis
+    orientation = ((getElem 0 xAxis) :. (getElem 0 yAxis) :. (getElem 0 zAxis) :. 0 :. ()) :.
+                  ((getElem 1 xAxis) :. (getElem 1 yAxis) :. (getElem 1 zAxis) :. 0 :. ()) :.
+                  ((getElem 2 xAxis) :. (getElem 2 yAxis) :. (getElem 2 zAxis) :. 0 :. ()) :.
+                  (         0        :.          0        :.          0        :. 1 :. ()) :. ()
+    translation = (1 :. 0 :. 0 :. 0 :. ()) :.
+                  (0 :. 1 :. 0 :. 0 :. ()) :.
+                  (0 :. 0 :. 1 :. 0 :. ()) :.
+                  ((-getElem 0 eye) :. (-getElem 1 eye) :. (-getElem 2 eye) :. 1 :. ()) :. ()
+
 main :: IO ()
 main = do
     window <- initAll
@@ -89,12 +167,9 @@ main = do
     programID <- loadProgram "SimpleVertexShader.vertexshader"
                              "SimpleFragmentShader.fragmentshader"
 
-    vertexPosition_modelspaceID <-
-      withCString "vertexPosition_modelspace" $
-      (fromIntegral <$>) . glGetAttribLocation programID
-    if (vertexPosition_modelspaceID /= 0)
-      then putStrLn "vertexPosition_modelspaceID could not be found!"
-      else putStrLn "vertexPosition_modelspaceID loaded!"
+    [vertexPosition_modelspaceID] <- localizateAllAttrib programID
+    [mvpID] <- localizateAllUniform programID
+    [color] <- localizateAllVarying programID
 
     let g_vertex_buffer_data = [-1, -1, 0, -- Triangle's vertex
                                  1, -1, 0,
@@ -114,7 +189,10 @@ main = do
     ( do
         t0 <- fromJust <$> GLFW.getTime -- Get initial time
         glClear gl_COLOR_BUFFER_BIT -- Clear color buffer
+        glClear gl_DEPTH_BUFFER_BIT
         glUseProgram programID
+        with mvpMatrix $
+          glUniformMatrix4fv mvpID 1 (fromBool False) . castPtr
         glEnableVertexAttribArray vertexPosition_modelspaceID
         glBindBuffer gl_ARRAY_BUFFER vertexBufferName
         glVertexAttribPointer vertexPosition_modelspaceID 3 gl_FLOAT (fromBool False) 0 nullPtr
