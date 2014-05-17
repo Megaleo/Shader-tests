@@ -133,10 +133,10 @@ localizateAllVarying programID = do
 vec3 x y z = x :. y :. z :. ()
 
 -- Model - View - Projection matrix
-mvpMatrix :: Mat44 GLfloat
-mvpMatrix = projection `multmm` view `multmm` model
+mvpMatrix :: GLfloat -> Mat44 GLfloat
+mvpMatrix angle = projection `multmm` view `multmm` model
   where projection = perspective 0.1 100 (pi/4) (4/3)
-        view       = lookAt (vec3 0 1 0) (vec3 4 3 3) (vec3 0 0 0)
+        view       = lookAt (vec3 0 1 0) (vec3 ((sin angle) * 5) ((sin angle) * 5) ((cos angle) * 5)) (vec3 0 0 0)
         model      = identity
 
 -- Data.Vec rotationLookAt does not work exactly like I want,
@@ -178,6 +178,8 @@ bindBufferToAttrib bufId attribLoc = do
 main :: IO ()
 main = do
     window <- initAll
+    glEnable gl_DEPTH_TEST
+    glDepthFunc gl_LESS
     glClearColor 0.0 0.0 0.4 1.0 -- Clear color to dark blue
     -- Shader stuff
     alloca $ \vertexArrayIDPtr -> do
@@ -272,7 +274,7 @@ main = do
         glClear gl_COLOR_BUFFER_BIT -- Clear color buffer
         glClear gl_DEPTH_BUFFER_BIT
         glUseProgram programID
-        with (mvpMatrix ) $
+        with (mvpMatrix $ realToFrac t0) $
           glUniformMatrix4fv mvpID 1 (fromBool True) . castPtr
         bindBufferToAttrib vertexBufferName vertexPosition_modelspaceID
         bindBufferToAttrib colorBufferId vertexColor
