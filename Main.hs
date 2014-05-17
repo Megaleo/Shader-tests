@@ -141,19 +141,16 @@ mvpMatrix = projection `multmm` view `multmm` model
 -- Data.Vec rotationLookAt does not work exactly like I want,
 -- temporary recoding
 lookAt :: Floating a => Vec3 a -> Vec3 a -> Vec3 a -> Mat44 a
-lookAt up eye target = orientation `multmm` translation
+lookAt up eye target = orientationM `multmm` translationM
   where
     zAxis = normalize (eye - target)
     xAxis = normalize $ up `cross` zAxis
     yAxis = zAxis `cross` xAxis
-    orientation = ((getElem 0 xAxis) :. (getElem 0 yAxis) :. (getElem 0 zAxis) :. 0 :. ()) :.
-                  ((getElem 1 xAxis) :. (getElem 1 yAxis) :. (getElem 1 zAxis) :. 0 :. ()) :.
-                  ((getElem 2 xAxis) :. (getElem 2 yAxis) :. (getElem 2 zAxis) :. 0 :. ()) :.
-                  (         0        :.          0        :.          0        :. 1 :. ()) :. ()
-    translation = (1 :. 0 :. 0 :. 0 :. ()) :.
-                  (0 :. 1 :. 0 :. 0 :. ()) :.
-                  (0 :. 0 :. 1 :. 0 :. ()) :.
-                  ((-getElem 0 eye) :. (-getElem 1 eye) :. (-getElem 2 eye) :. 1 :. ()) :. ()
+    orientationM = (homVec xAxis) :.
+                  (homVec yAxis) :.
+                  (homVec zAxis) :.
+                  (0:.0 :.0:.1:.()) :. ()
+    translationM = translation (-eye)
 
 main :: IO ()
 main = do
@@ -191,7 +188,7 @@ main = do
         glClear gl_COLOR_BUFFER_BIT -- Clear color buffer
         glClear gl_DEPTH_BUFFER_BIT
         glUseProgram programID
-        with mvpMatrix $
+        with (mvpMatrix ) $
           glUniformMatrix4fv mvpID 1 (fromBool False) . castPtr
         glEnableVertexAttribArray vertexPosition_modelspaceID
         glBindBuffer gl_ARRAY_BUFFER vertexBufferName
